@@ -1,2 +1,2 @@
 # EE475_group4
-This is the repo for EE475 group 4. Our project is the Health Inspector.
+This is the repo for EE475 spring 2020 group 4. Our project is the Health Inspector.
