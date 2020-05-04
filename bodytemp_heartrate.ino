@@ -27,6 +27,7 @@ volatile int thresh = 250; // used to find instant moment of heart beat, seeded
 volatile int amp = 50; // used to hold amplitude of pulse waveform, seeded
 volatile boolean firstBeat = true; // used to seed rate array so we startup with reasonable BPM
 volatile boolean secondBeat = false; // used to seed rate array so we startup with reasonable BPM
+
 void setup()
 {
     //init_var();
@@ -124,45 +125,6 @@ void arduinoSerialMonitorVisual(char symbol, int data )
     int sensorReading = data; // map the sensor range to a range of 12 options:
     int range = map(sensorReading, sensorMin, sensorMax, 0, 11);
     
-    // do something different depending on the
-    // range value:
-    switch (range) {
-    case 0:
-      Serial.println(""); /////ASCII Art Madnessbreak;
-    case 1:
-      Serial.println(" — - ");
-    break;
-    case 2:
-      Serial.println(" — — — ");
-    break;
-    case 3:
-      Serial.println(" — — — — -");
-    break;
-    case 4:
-      Serial.println(" — — — — — — ");
-    break;
-    case 5:
-      Serial.println(" — — — — — — — |-");
-    break;
-    case 6:
-      Serial.println(" — — — — — — — | — -");
-    break;
-    case 7:
-      Serial.println(" — — — — — — — | — — — -");
-    break;
-    case 8:
-      Serial.println(" — — — — — — — | — — — — — ");
-    break;
-    case 9:
-      Serial.println(" — — — — — — — | — — — — — — — — ");
-    break;
-    case 10:
-      Serial.println(" — — — — — — — | — — — — — — — — — -");
-    break;
-    case 11:
-      Serial.println(" — — — — — — — | — — — — — — — — — — — -");
-    break;
-    }
 }
 
 
