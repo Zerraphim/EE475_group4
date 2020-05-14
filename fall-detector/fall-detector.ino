@@ -54,43 +54,44 @@ void setup() {
 }
 
 void loop() {
-    // read raw accel/gyro measurements from device
-    //accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    negX = false;
-    accelgyro.getAcceleration(&ax, &ay, &az);
-    ax = ax + ACCEL_X_OFFSET;
-    ay = ay + ACCEL_Y_OFFSET;
-    az = az + ACCEL_Z_OFFSET;
-    unsigned long accel = sqrt((long)ax*ax + (long)ay*ay + (long)az*az);
+  fallDetection();
+}
 
-    // debugging prints
-    #ifdef OUTPUT_READABLE_ACCELGYRO
-        Serial.print("a/g:\t");
-        Serial.print(ax); Serial.print("\t");
-        Serial.print(ay); Serial.print("\t");
-        Serial.print(az); Serial.print("\t");
-        Serial.println(accel);
-    #endif
-    if (accel > FALL_HIGH_THRESHOLD) {
-      fallTimer = millis();
-      // check for low acceleration after breaking high threshold for FALL_TIME
-      while (millis() - FALL_TIME < fallTimer) {
-        accelgyro.getAcceleration(&ax, &ay, &az);
-        accel = sqrt((long)ax*ax + (long)ay*ay + (long)az*az);
-        if(!negX && ax < 0) {
-          negX = true;
-        }
-        // if low acceleration is passed, a fall is detected
-        if ((accel != 0) && (accel < FALL_LOW_THRESHOLD) && negX) {
-          Serial.println("Fall detected");
-          lcd.print("Fall detected");
-          delay(7000);
-          lcd.clear();
-          break;
-        }
+void fallDetection() {
+  // read raw accel/gyro measurements from device
+  //accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  negX = false;
+  accelgyro.getAcceleration(&ax, &ay, &az);
+  ax = ax + ACCEL_X_OFFSET;
+  ay = ay + ACCEL_Y_OFFSET;
+  az = az + ACCEL_Z_OFFSET;
+  unsigned long accel = sqrt((long)ax*ax + (long)ay*ay + (long)az*az);
+
+  // debugging prints
+  #ifdef OUTPUT_READABLE_ACCELGYRO
+      Serial.print("a/g:\t");
+      Serial.print(ax); Serial.print("\t");
+      Serial.print(ay); Serial.print("\t");
+      Serial.print(az); Serial.print("\t");
+      Serial.println(accel);
+  #endif
+  if (accel > FALL_HIGH_THRESHOLD) {
+    fallTimer = millis();
+    // check for low acceleration after breaking high threshold for FALL_TIME
+    while (millis() - FALL_TIME < fallTimer) {
+      accelgyro.getAcceleration(&ax, &ay, &az);
+      accel = sqrt((long)ax*ax + (long)ay*ay + (long)az*az);
+      if(!negX && ax < 0) {
+        negX = true;
+      }
+      // if low acceleration is passed, a fall is detected
+      if ((accel != 0) && (accel < FALL_LOW_THRESHOLD) && negX) {
+        Serial.println("Fall detected");
+        lcd.print("Fall detected");
+        delay(7000);
+        lcd.clear();
+        break;
       }
     }
-    
-
-    
+  }
 }

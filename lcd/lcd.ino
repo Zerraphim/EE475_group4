@@ -1,12 +1,12 @@
 // include the library code:
 #include <LiquidCrystal.h>
 
-#define LCD_RS 2
-#define LCD_EN 3
-#define LCD_D4 4
-#define LCD_D5 5
-#define LCD_D6 6
-#define LCD_D7 7
+#define LCD_RS 3
+#define LCD_EN 4
+#define LCD_D4 5
+#define LCD_D5 6
+#define LCD_D6 7
+#define LCD_D7 8
 
 
 // initialize the library with the numbers of the interface pins
