@@ -7,7 +7,7 @@
 #include <PulseSensorPlayground.h>
 
 #define PULSE_PIN 2
-#define PULSE_THRESHOLD 600
+#define PULSE_THRESHOLD 700
 
 #define TEMP_PIN 0
 
@@ -19,8 +19,8 @@
 #define LCD_D6 7
 #define LCD_D7 8
 
-#define FALL_TIME 25               // time to detect a fall after a high acceleration in milliseconds
-#define FALL_HIGH_THRESHOLD 27500  // high acceleration threshold to check for a fall
+#define FALL_TIME 20               // time to detect a fall after a high acceleration in milliseconds
+#define FALL_HIGH_THRESHOLD 25000  // high acceleration threshold to detect a fall
 #define FALL_LOW_THRESHOLD 3000    // low acceleration threshold to detect a fall
 
 // offsets found by holding the accelerometer still
@@ -29,7 +29,7 @@
 #define ACCEL_Z_OFFSET 8000
 
 // offset found by comparing LM35 with a working thermometer
-#define TEMP_OFFSET -4.0
+#define TEMP_OFFSET -6.0
 
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 PulseSensorPlayground pulseSensor;
@@ -40,6 +40,8 @@ MPU6050 accelgyro;
 int16_t ax, ay, az;
 bool negX = false;
 
+//int count = 0;
+
 // uncomment "OUTPUT_READABLE_ACCELGYRO" if you want to see a tab-separated
 // list of the accel X/Y/Z and then gyro X/Y/Z values in decimal. Easy to read,
 // not so easy to parse, and slow(er) over UART.
@@ -49,6 +51,7 @@ float tempC;
 float tempF;
 float avgReading;
 float avgTemp;
+int tempRawRead;
 int tempCount;
 int myBPM;
 
@@ -89,14 +92,14 @@ void loop() {
   
   fallDetection();
   
-  if(currTime - prevTime > 100) {
+  if(currTime - prevTime > 20) {
     getTempPulse();
   }
 
   // update LCD about every 1 second
   if(currTime - prevTime > 1000) {
     prevTime = currTime;
-    tempC = (avgTemp*500.0) / 1024.0 + TEMP_OFFSET;
+    tempC = (avgTemp*500.0) / 1023.0 + TEMP_OFFSET;
     tempF = tempC*1.8 + 32;
     avgReading = 0;
     tempCount = 0;
@@ -109,12 +112,13 @@ void loop() {
     lcd.print(tempF,1);
     lcd.print((char)223); // degree symbol
     lcd.print("F ");
-    
-    lcd.setCursor(0,1);
-    lcd.print(myBPM);
-    lcd.print(" BPM  ");
+
+    if(pulseSensor.sawStartOfBeat()) {
+      lcd.setCursor(0,1);
+      lcd.print(myBPM);
+      lcd.print(" BPM  ");
+    }
   }
-  
 }
 
 /*
@@ -131,18 +135,22 @@ void fallDetection() {
   az = az + ACCEL_Z_OFFSET;
   unsigned long accel = sqrt((long)ax*ax + (long)ay*ay + (long)az*az);
 
-  // debugging prints
-  #ifdef OUTPUT_READABLE_ACCELGYRO
-      Serial.print("a/g:\t");
-      Serial.print(ax); Serial.print("\t");
-      Serial.print(ay); Serial.print("\t");
-      Serial.print(az); Serial.print("\t");
-      Serial.println(accel);
-  #endif
   if (accel > FALL_HIGH_THRESHOLD) {
     fallTimer = millis();
+    //Serial.print("past high ");
+    //Serial.println(count);
+    //count++;
+    
     // check for low acceleration after breaking high threshold for FALL_TIME
     while (millis() - FALL_TIME < fallTimer) {
+      // debugging prints
+      #ifdef OUTPUT_READABLE_ACCELGYRO
+          //Serial.print("after high:\t");
+          Serial.print(ax); Serial.print("\t");
+          Serial.print(ay); Serial.print("\t");
+          Serial.print(az); Serial.print("\t");
+          Serial.println(accel);
+      #endif
       accelgyro.getAcceleration(&ax, &ay, &az);
       accel = sqrt((long)ax*ax + (long)ay*ay + (long)az*az);
       if(!negX && ax < 0) {
@@ -161,7 +169,7 @@ void fallDetection() {
 
 /* measures temperature and pulse rate
  * temperature is measured from raw readings - it will be converted to C and F later
- * temperature is measured using an average of 100 readings
+ * temperature is measured using an average of 10 readings
  * pulse is measured in BPM
  */
 void getTempPulse() {  
@@ -169,15 +177,24 @@ void getTempPulse() {
     Serial.print(myBPM);
     Serial.println(" BPM");
     Serial.print(tempC,1);
-    Serial.print(" C\t"); // degree symbol
+    Serial.print(" C\t"); 
     Serial.print(tempF,1);
-    Serial.println(" F"); // degree symbol
+    Serial.println(" F");
   #endif
-
+   
   myBPM = pulseSensor.getBeatsPerMinute();
-  if(tempCount < 100) {
-    avgReading += analogRead(TEMP_PIN);
+  //Serial.println(analogRead(PULSE_PIN));;
+  //Serial.println(myBPM);
+
+  // disable interrupts when reading temp to prevent bad reads
+  noInterrupts();
+  if(tempCount < 10) {
+    tempRawRead = analogRead(TEMP_PIN);
+    //Serial.println(tempRawRead);
+    avgReading += tempRawRead;
     tempCount++;
-  } 
+  }
+  interrupts();
+
   avgTemp = avgReading / tempCount;
 }
