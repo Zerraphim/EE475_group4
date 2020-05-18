@@ -2,15 +2,16 @@
 
     
 // Variables
-int pulsePin = 0; // Pulse Sensor purple wire connected to analog pin 0
+int pulsePin = A3; // Pulse Sensor purple wire connected to analog pin 0
 int blinkPin = 13; // pin to blink led at each beat
 int fadePin = 8; // pin to do fancy classy fading blink at each beat
 int fadeRate = 0; // used to fade LED on with PWM on fadePin
 const int sensor=A1; // Assigning analog pin A1 to variable ‘sensor’
 float tempc; //variable to store temperature in degree Celsius
 float tempf; //variable to store temperature in Fahreinheit
-float vout; //temporary variable to hold sensor reading
-LiquidCrystal lcd(13,12,6,5,4,3);// Volatile Variables, used in the interrupt service routine!
+float vout; //temporary variable to hold sensor readingx
+//LiquidCrystal lcd(13,12,6,5,4,3);// Volatile Variables, used in the interrupt service routine!
+LiquidCrystal lcd(7,6,2,3,4,5);
 volatile int BPM; // int that holds raw Analog in 0. updated every 2mS
 volatile int Signal; // holds the incoming raw data
 volatile int IBI = 600; // int that holds the time interval between beats! Mustbe seeded!
@@ -30,17 +31,17 @@ volatile boolean secondBeat = false; // used to seed rate array so we startup wi
 
 void setup()
 {
-    //init_var();
 
     pinMode(blinkPin,OUTPUT); // pin that will blink to your heartbeat!
     pinMode(fadePin,OUTPUT); // pin that will fade to your heartbeat!
     Serial.begin(115200); // we agree to talk fast!
     interruptSetup(); // sets up to read Pulse Sensor signal every 2mS
+    
     // IF YOU ARE POWERING The Pulse Sensor AT VOLTAGE LESS THAN THE BOARD VOLTAGE,
     // UN-COMMENT THE NEXT LINE AND APPLY THAT VOLTAGE TO THE A-REF PIN
-    // analogReference(EXTERNAL);
+    //analogReference(EXTERNAL);
     pinMode(sensor,INPUT); // Configuring pin A1 as input
-    Serial.begin(9600);
+    //Serial.begin(9600);
 }
 
 
@@ -48,8 +49,7 @@ void setup()
 void loop()
 {
     serialOutput();
-    if (QS == true) // A Heartbeat Was Found
-    {
+    if (QS == true) { // A Heartbeat Was Found 
     // BPM and IBI have been Determined
     // Quantified Self “QS” true when arduino finds a heartbeat
     
@@ -60,17 +60,18 @@ void loop()
     vout=(vout*500)/1023;
     tempc=vout; // Storing value in Degree Celsius
     tempf=(vout*1.8)+32; // Converting to Fahrenheit
-    //Serial.print(“in DegreeC=”);
+    Serial.print("in DegreeC=");
     Serial.print("t");
     Serial.print(tempc);
     Serial.println();
     Serial.print("in Fahrenheit");
-    //Serial.print(“\t”);
+    Serial.print("\t");
     Serial.print(tempf);
     Serial.println();
     lcd.print("temp in c:");
-    lcd.print(tempc);
+    lcd.print(tempc, 1);
     delay(2000); //Delay of 1 second for ease of viewing
+    
     }
     
     ledFadeToBeat(); // Makes the LED Fade Effect Happen
@@ -105,7 +106,7 @@ void serialOutputWhenBeatHappens()
 {
   if (serialVisual == true) // Code to Make the Serial Monitor Visualizer Work
   {
-      Serial.print("Heart-Beat Happened"); //ASCII Art Madness
+      Serial.print("***Heart-Beat Happened***"); 
       Serial.print("BPM: ");
       Serial.println(BPM);
       lcd.clear();
@@ -149,6 +150,7 @@ void sendDataToSerial(char symbol, int data )
     { // thresh condition helps avoid noise
     P = Signal; // P is the peak
     } // keep track of highest point in pulse wave
+    
     // NOW IT’S TIME TO LOOK FOR THE HEART BEAT
     // signal surges up in value every time there is a pulse
     if (N > 250)
