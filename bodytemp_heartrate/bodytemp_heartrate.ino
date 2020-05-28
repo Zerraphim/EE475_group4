@@ -2,16 +2,16 @@
 
     
 // Variables
-int pulsePin = A3; // Pulse Sensor purple wire connected to analog pin 0
+int pulsePin = A2; // Pulse Sensor purple wire connected to analog pin 0
 int blinkPin = 13; // pin to blink led at each beat
 int fadePin = 8; // pin to do fancy classy fading blink at each beat
 int fadeRate = 0; // used to fade LED on with PWM on fadePin
-const int sensor=A1; // Assigning analog pin A1 to variable ‘sensor’
+const int sensor=A0; // Assigning analog pin A1 to variable ‘sensor’
 float tempc; //variable to store temperature in degree Celsius
 float tempf; //variable to store temperature in Fahreinheit
 float vout; //temporary variable to hold sensor readingx
 //LiquidCrystal lcd(13,12,6,5,4,3);// Volatile Variables, used in the interrupt service routine!
-LiquidCrystal lcd(7,6,2,3,4,5);
+LiquidCrystal lcd(3,4,5,6,7,8);
 volatile int BPM; // int that holds raw Analog in 0. updated every 2mS
 volatile int Signal; // holds the incoming raw data
 volatile int IBI = 600; // int that holds the time interval between beats! Mustbe seeded!
@@ -70,7 +70,7 @@ void loop()
     Serial.println();
     lcd.print("temp in c:");
     lcd.print(tempc, 1);
-    delay(2000); //Delay of 1 second for ease of viewing
+    delay(1000); //Delay of 1 second for ease of viewing
     
     }
     

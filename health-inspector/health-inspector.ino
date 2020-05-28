@@ -19,7 +19,7 @@
 #define LCD_D6 7
 #define LCD_D7 8
 
-#define FALL_TIME 20               // time to detect a fall after a high acceleration in milliseconds
+#define FALL_TIME 25               // time to detect a fall after a high acceleration in milliseconds
 #define FALL_HIGH_THRESHOLD 25000  // high acceleration threshold to detect a fall
 #define FALL_LOW_THRESHOLD 3000    // low acceleration threshold to detect a fall
 
@@ -111,7 +111,7 @@ void loop() {
     lcd.print("C ");
     lcd.print(tempF,1);
     lcd.print((char)223); // degree symbol
-    lcd.print("F ");
+    lcd.print("F   ");
 
     if(pulseSensor.sawStartOfBeat()) {
       lcd.setCursor(0,1);
@@ -183,7 +183,7 @@ void getTempPulse() {
   #endif
    
   myBPM = pulseSensor.getBeatsPerMinute();
-  //Serial.println(analogRead(PULSE_PIN));;
+  Serial.println(analogRead(PULSE_PIN));;
   //Serial.println(myBPM);
 
   // disable interrupts when reading temp to prevent bad reads

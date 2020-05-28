@@ -1,5 +1,5 @@
 #include<SoftwareSerial.h>
-SoftwareSerial client(2, 3); //RX, TX
+SoftwareSerial client(12, 11); //RX, TX
 
 String webpage = "";
 int i = 0, k = 0;
@@ -109,7 +109,7 @@ void wifi_init()
     //////////////////////////IMPORTANT///////////////////////////
     //////////////////////////////////////////////////////////////
     /////////provide your WiFi username and password here/////////
-    connect_wifi("AT+CWJAP=\"CenturyLink1521\",\"rm682pf5y7ymny\"", 7000);
+    connect_wifi("AT+CWJAP=\"Frontier_5\",\"0935985578\"", 7000);
     // connect_wifi("AT+CWJAP=\"vpn address\",\"wireless network\"",7000);
   }
   else
