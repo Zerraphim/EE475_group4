@@ -1,5 +1,5 @@
 #include<SoftwareSerial.h>
-SoftwareSerial client(12,11); //RX, TX
+SoftwareSerial client(2,3); //RX, TX
 
 String webpage="";
 int i=0,k=0;
@@ -8,8 +8,8 @@ int x=0;
 ////////////////////////////////////////////////////
 //////////PARAMETERS HERE///////////////////////////
 ////////////////////////////////////////////////////
-String temp = "Temperature will be here.";
-String heartrate = "Heartrate will be here." ;
+String temp = "0";
+String heartrate = "0";
 int fall = 0;
 
 ////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ void wifi_init()
       if(!No_IP)
       {
         Serial.println("Connecting Wifi....");
-        connect_wifi("AT+CWJAP=\"Frontier_5\",\"0935985578\"",7000);         //provide your WiFi username and password here
+        connect_wifi("AT+CWJAP=\"CenturyLink1521\",\"rm682pf5y7ymny\"",7000);         //provide your WiFi username and password here
      // connect_wifi("AT+CWJAP=\"vpn address\",\"wireless network\"",7000);
       }
       else
@@ -142,6 +142,10 @@ void sendwebdata(String webPage)
      }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////The codes that needs to be put into the setup block//////////////////////////////////////////////
 void setup() 
 {
    Serial.begin(9600);
@@ -150,33 +154,36 @@ void setup()
    Serial.println("System Ready..");
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////The codes(inside the while loop which is always true) that needs to be put into the infinite loop
 void loop() 
 {
-  k=0;
-  Serial.println("Please Refresh your Page");
-  while(k<1000)
-  {
-    k++;
-   while(client.available())
-   {
-    if(client.find("0,CONNECT"))
-    {
-      Serial.println("Start Printing");
-      Send();
-      Serial.println("Done Printing");
-      delay(1000);
+    while (1) {
+     Serial.println("Please Refresh your Page");
+     delay(1000);
+     while(client.available()){
+      if(client.find("0,CONNECT"))
+      {
+        Serial.println("Start Printing");
+        Send();
+        Serial.println("Done Printing");
+        delay(1000);
+      }
     }
-  }
-  delay(1);
- }
+    delay(1);
+   }
 }
 
 void Send()
 {
-      webpage = "<h1>Temperature is " + temp + "</h1><body bgcolor=f0f0f0>";
+    if (fall == 1) { //There is a fall detected
+      webpage = "<table style=\"width:100%;border: 1px solid black;\"><tr><th style=\"border: 1px solid black;\">Heartrate</th><th>Temperature</th><th style=\"border: 1px solid black;\">Fall?</th></tr><tr><td>" + heartrate + "</td><td style=\"border: 1px solid black;\">" + temp + "</td><td>safe</td></tr></table>";
       sendwebdata(webpage);
-      webpage = "<h1>Heartrate is " + heartrate + "</h1><body bgcolor=f0f0f0>";
+    } else {
+       webpage = "<table style=\"width:100%;border: 1px solid black;\"><tr><th style=\"border: 1px solid black;\">Heartrate</th><th>Temperature</th><th style=\"border: 1px solid black;\">Fall?</th></tr><tr><td>" + heartrate + "</td><td style=\"border: 1px solid black;\">" + temp + "</td><td>DANGER!</td></tr></table>";
       sendwebdata(webpage);
+    }
       delay(1000);
       client.println("AT+CIPCLOSE=0"); 
 }
