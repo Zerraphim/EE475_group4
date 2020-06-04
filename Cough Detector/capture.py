@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#EE 475 Group 4 Health Inspector
+#This file is available on https://github.com/devicehive/devicehive-audio-analysis
+
 import argparse
 import logging.config
 import threading
