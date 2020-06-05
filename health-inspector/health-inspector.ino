@@ -1,3 +1,23 @@
+/*
+The Health Inspector measures temperature and pulse. It can also detect falls. The temperaure, pulse, and fall detection is uploaded to a website.
+The website can be accessed by the IP printed out on the Serial Monitor. The Health Inspector also sends data to Excel via data streamer. You can save
+the recorded data as a spreadsheet.
+
+Credits
+
+Alexander Thiem: Fall detection and combining fall detection, temperature and pulse measurements, and Wifi into one system
+Abdiasis Ibrahim: Temperature and pulse measurements 
+Bonan Kou: Wifi and website
+Jin Yan: Sending data to Excel 
+
+References
+
+fall detection: https://www.arduino.cc/en/Tutorial/ADXL3xx
+temperature and pulse measurements: https://medium.com/@chawlamahima76/heartbeat-and-body-temperature-monitoring-using-arduino-cf0a339b50f
+Wifi and website: https://circuitdigest.com/microcontroller-projects/sending-arduino-data-to-webpage
+sending data to Excel: https://create.arduino.cc/projecthub/HackingSTEM/stream-data-from-arduino-into-excel-f1bede
+*/
+
 #define USE_ARDUINO_INTERRUPTS true    // Set-up low-level interrupts for most acurate BPM math.
 
 #include <I2Cdev.h>
@@ -49,6 +69,7 @@ bool negX = false;
 // not so easy to parse, and slow(er) over UART.
 //#define OUTPUT_READABLE_ACCELGYRO
 
+// temperature and pulse measurements
 float tempC;
 float tempF;
 float avgReading;
@@ -57,153 +78,39 @@ int tempRawRead;
 int tempCount;
 int myBPM;
 
+// timers used to call functions
 unsigned long currTime;
 unsigned long prevTime;
-
+unsigned long webTimer = 0;  // timer for sending data to website
+unsigned long excelTimer = 0;
 unsigned long fallTimer = 0;
 
+// Wifi variables
 int i = 0, k = 0;
 String readString;
 int x = 0;
-////////////////////////////////////////////////////
-//////////PARAMETERS HERE///////////////////////////
-////////////////////////////////////////////////////
+
+// store measurements as String for easier uploading
 String temp = "0";
 String heartrate = "0";
 int fall = 0;
 
-////////////////////////////////////////////////////
-////////////////////////////////////////////////////
 boolean No_IP = false;
 String IP = "";
 char temp1 = '0';
 
-String name = "<p>Circuit Digest</p>"; //22
-String dat = "<p>Data Received Successfully.....</p>";   //21
+// array for Excel values
+char* excelArr[6];
 
 void fallDetection();
 void getTempPulse();
-
-void check4IP(int t1)
-{
-  int t2 = millis();
-  while (t2 + t1 > millis())
-  {
-    while (client.available() > 0)
-    {
-      if (client.find("WIFI GOT IP"))
-      {
-        No_IP = true;
-      }
-    }
-  }
-}
-
-void get_ip()
-{
-  IP = "";
-  char ch = 0;
-  while (1)
-  {
-    client.println("AT+CIFSR");
-    while (client.available() > 0)
-    {
-      if (client.find("STAIP,"))
-      {
-        delay(1000);
-        Serial.print("IP Address:");
-        while (client.available() > 0)
-        {
-          ch = client.read();
-          if (ch == '+')
-            break;
-          IP += ch;
-        }
-      }
-      if (ch == '+')
-        break;
-    }
-    if (ch == '+')
-      break;
-    delay(1000);
-  }
-  Serial.print(IP);
-  Serial.print("Port:");
-  Serial.println(80);
-}
-
-void connect_wifi(String cmd, int t)
-{
-  int temp = 0, i = 0;
-  while (1)
-  {
-    Serial.println(cmd);
-    client.println(cmd);
-    while (client.available())
-    {
-      if (client.find("OK"))
-        i = 8;
-    }
-    delay(t);
-    if (i > 5)
-      break;
-    i++;
-  }
-  if (i == 8)
-    Serial.println("OK");
-  else
-    Serial.println("Error");
-}
-
-void wifi_init()
-{
-  connect_wifi("AT", 100);
-  connect_wifi("AT+CWMODE=3", 100);
-  connect_wifi("AT+CWQAP", 100);
-  connect_wifi("AT+RST", 5000);
-  check4IP(5000);
-  if (!No_IP)
-  {
-    Serial.println("Connecting Wifi....");
-    connect_wifi("AT+CWJAP=\"Frontier_2.4\",\"0935985578\"", 7000);        //provide your WiFi username and password here
-    // connect_wifi("AT+CWJAP=\"vpn address\",\"wireless network\"",7000);
-  }
-  else
-  {
-  }
-  Serial.println("Wifi Connected");
-  get_ip();
-  connect_wifi("AT+CIPMUX=1", 100);
-  connect_wifi("AT+CIPSERVER=1,80", 100);
-}
-
-void sendwebdata(String webPage)
-{
-  int ii = 0;
-  while (1)
-  {
-    unsigned int l = webPage.length();
-    Serial.print("AT+CIPSEND=0,");
-    client.print("AT+CIPSEND=0,");
-    Serial.println(l + 2);
-    client.println(l + 2);
-    delay(100);
-    Serial.println(webPage);
-    client.println(webPage);
-    while (client.available())
-    {
-      //Serial.print(Serial.read());
-      if (client.find("OK"))
-      {
-        ii = 11;
-        break;
-      }
-    }
-    if (ii == 11)
-      break;
-    delay(100);
-  }
-}
+void Send();
+void sendwebdata(String webPage);
+void check4IP(int t1);
+void get_ip();
+void connect_wifi(String cmd, int t);
+void wifi_init();
+void sendwebdata(String webPage);
 
 void setup() {
   Wire.begin();
@@ -241,8 +148,6 @@ void loop() {
   if (currTime - prevTime > 1000) {
     prevTime = currTime;
     tempC = (avgTemp * 500.0) / 1023.0 + TEMP_OFFSET;
-    temp = tempC;
-    //temp = tempC;
     tempF = tempC * 1.8 + 32;
     avgReading = 0;
     tempCount = 0;
@@ -257,34 +162,89 @@ void loop() {
     lcd.print("F   ");
 
     if (pulseSensor.sawStartOfBeat()) {
-      //heartrate = myBPM;
       lcd.setCursor(0, 1);
       lcd.print(myBPM);
       lcd.print(" BPM  ");
     }
   }
   
-  heartrate = myBPM;
-  Serial.println("Please Refresh your Page");
-  delay(1000);
-  while (client.available()) {
-    if (client.find("0,CONNECT"))
-    {
-      Serial.println("Start Printing");
-      Send();
-      Serial.println("Done Printing");
-      delay(1000);
+  // send data to website every 750 ms
+  if (currTime - webTimer > 750) {
+    temp = tempC;
+    heartrate = myBPM;
+    //Serial.println("Please Refresh your Page");
+    while (client.available()) {
+      if (client.find("0,CONNECT"))
+      {
+        //Serial.println("Start Printing");
+        Send();
+        //Serial.println("Done Printing");
+        break;
+      }
     }
+    webTimer = millis();
+  }
+
+  // send data to Excel every 5 seconds
+  if (millis() - excelTimer > 5000) {
+    processIncomingExcel();
+    sendDatatoExcel();
+    excelTimer = millis();
   }
 }
 
-void Send()
-{
+// sends data to Excel via serial
+// commas are delimiters between data
+void sendDatatoExcel() {
+  Serial.print(tempC); 
+  Serial.print(","); 
+  Serial.print(myBPM); 
+  Serial.print(","); 
+  Serial.print(fall);
+  Serial.print(",");
+  Serial.println();
+}
+
+// processes data coming from Excel
+void processIncomingExcel() {
+  if(Serial.available()){
+    parseDataExcel(GetSerialData());
+  }
+}
+
+// Gathers bytes from serial port to build inputString
+char* GetSerialData() {
+  static char inputString[64]; // Create a char array to store incoming data
+  memset(inputString, 0, sizeof(inputString)); // Clear the memory from a pervious reading
+  while (Serial.available()){
+    Serial.readBytesUntil('\n', inputString, 64); //Read every byte in Serial buffer until line end or 64 bytes
+  }
+  return inputString;
+}
+
+// Seperate the data at each delimeter
+void parseDataExcel(char data[]) {
+    char *token = strtok(data, ","); // Find the first delimeter and return the token before it
+    int index = 0; // Index to track storage in the array
+    while (token != NULL) { // Char* strings terminate w/ a Null character. We'll keep running the command until we hit it
+      excelArr[index] = token; // Assign the token to an array
+      token = strtok(NULL, ","); // Conintue to the next delimeter
+      index++; 
+    }
+}
+
+/* 
+  sends HTML to website in the format:
+  Temperature is <temp> C
+  Heartrate is <BPM> BPM
+  Fall detected/not detected
+*/
+void Send() {
   String webpage = "";
   webpage = "<h1>Temperature is " + temp + " C</h1><body bgcolor=f0f0f0>";
-    sendwebdata(webpage);
-    webpage = "<h1>Heartrate is " + heartrate + " BPM</h1><body bgcolor=f0f0f0>";
-    sendwebdata(webpage);
+  sendwebdata(webpage);
+  webpage = "<h1>Heartrate is " + heartrate + " BPM</h1><body bgcolor=f0f0f0>";
+  sendwebdata(webpage);
   if (fall == 1) { //There is a fall detected
     webpage = "<h1>Fall DETECTED</h1><body bgcolor=f0f0f0>";
     sendwebdata(webpage);
@@ -297,8 +257,8 @@ void Send()
 }
 
 /*
-   detects if a fall happened
-   prints "Fall Detected" to first line of LCD if a fall is detected
+  detects if a fall happened
+  prints "Fall Detected" to first line of LCD if a fall is detected
 */
 void fallDetection() {
   // read raw accel/gyro measurements from device
@@ -319,13 +279,14 @@ void fallDetection() {
     // check for low acceleration after breaking high threshold for FALL_TIME
     while (millis() - FALL_TIME < fallTimer) {
       // debugging prints
-#ifdef OUTPUT_READABLE_ACCELGYRO
-      //Serial.print("after high:\t");
-      Serial.print(ax); Serial.print("\t");
-      Serial.print(ay); Serial.print("\t");
-      Serial.print(az); Serial.print("\t");
-      Serial.println(accel);
-#endif
+      #ifdef OUTPUT_READABLE_ACCELGYRO
+        //Serial.print("after high:\t");
+        Serial.print(ax); Serial.print("\t");
+        Serial.print(ay); Serial.print("\t");
+        Serial.print(az); Serial.print("\t");
+        Serial.println(accel);
+      #endif
+      
       accelgyro.getAcceleration(&ax, &ay, &az);
       accel = sqrt((long)ax * ax + (long)ay * ay + (long)az * az);
       if (!negX && ax < 0) {
@@ -348,14 +309,14 @@ void fallDetection() {
    pulse is measured in BPM
 */
 void getTempPulse() {
-#ifdef DEBUG_PRINT
-  Serial.print(myBPM);
-  Serial.println(" BPM");
-  Serial.print(tempC, 1);
-  Serial.print(" C\t");
-  Serial.print(tempF, 1);
-  Serial.println(" F");
-#endif
+  #ifdef DEBUG_PRINT
+    Serial.print(myBPM);
+    Serial.println(" BPM");
+    Serial.print(tempC, 1);
+    Serial.print(" C\t");
+    Serial.print(tempF, 1);
+    Serial.println(" F");
+  #endif
 
   myBPM = pulseSensor.getBeatsPerMinute();
   //Serial.println(analogRead(PULSE_PIN));;
@@ -372,4 +333,112 @@ void getTempPulse() {
   interrupts();
 
   avgTemp = avgReading / tempCount;
+}
+
+// checks if ESP-01 has an IP address
+void check4IP(int t1) {
+  int t2 = millis();
+  while (t2 + t1 > millis()) {
+    while (client.available() > 0) {
+      if (client.find("WIFI GOT IP")) {
+        No_IP = true;
+      }
+    }
+  }
+}
+
+// prints out the IP address of the ESP-01 over serial
+void get_ip() {
+  IP = "";
+  char ch = 0;
+  while (1) {
+    client.println("AT+CIFSR");
+    while (client.available() > 0) {
+      if (client.find("STAIP,")) {
+        delay(1000);
+        Serial.print("IP Address:");
+        while (client.available() > 0) {
+          ch = client.read();
+          if (ch == '+')
+            break;
+          IP += ch;
+        }
+      }
+      if (ch == '+')
+        break;
+    }
+    if (ch == '+')
+      break;
+    delay(1000);
+  }
+  Serial.print(IP);
+  Serial.print("Port:");
+  Serial.println(80);
+}
+
+// sends a command to te ESP-01 with a timer before retrying the command
+void connect_wifi(String cmd, int t) {
+  int temp = 0, i = 0;
+  while (1) {
+    Serial.println(cmd);
+    client.println(cmd);
+    while (client.available()) {
+      if (client.find("OK"))
+        i = 8;
+    }
+    delay(t);
+    if (i > 5)
+      break;
+    i++;
+  }
+  if (i == 8)
+    Serial.println("OK");
+  else
+    Serial.println("Error");
+}
+
+// initializes the ESP-01 to create a website
+void wifi_init() {
+  connect_wifi("AT", 100);
+  connect_wifi("AT+CWMODE=3", 100);
+  connect_wifi("AT+CWQAP", 100);
+  connect_wifi("AT+RST", 5000);
+  check4IP(5000);
+  if (!No_IP) {
+    Serial.println("Connecting Wifi....");
+    connect_wifi("AT+CWJAP=\"Frontier_2.4\",\"0935985578\"", 7000);        //provide your WiFi username and password here
+    // connect_wifi("AT+CWJAP=\"vpn address\",\"wireless network\"",7000);
+  }
+  else
+  {
+  }
+  Serial.println("Wifi Connected");
+  get_ip();
+  connect_wifi("AT+CIPMUX=1", 100);
+  connect_wifi("AT+CIPSERVER=1,80", 100);
+}
+
+// sends a webpage to the ESP-01 and uploads it to the website on the ESP-01
+void sendwebdata(String webPage) {
+  int ii = 0;
+  while (1) {
+    unsigned int l = webPage.length();
+    //Serial.print("AT+CIPSEND=0,");
+    client.print("AT+CIPSEND=0,");
+    //Serial.println(l + 2);
+    client.println(l + 2);
+    delay(100);
+    //Serial.println(webPage);
+    client.println(webPage);
+    while (client.available()) {
+      //Serial.print(Serial.read());
+      if (client.find("OK")) {
+        ii = 11;
+        break;
+      }
+    }
+    if (ii == 11)
+      break;
+    delay(100);
+  }
 }
