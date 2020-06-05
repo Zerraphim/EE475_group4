@@ -5,12 +5,12 @@ the recorded data as a spreadsheet.
 
 Credits
 
-Alexander Thiem: Fall detection and combining fall detection, temperature and pulse measurements, and Wifi into one system
-Abdiasis Ibrahim: Temperature and pulse measurements 
-Bonan Kou: Wifi and website
-Jin Yan: Sending data to Excel 
+Alexander Thiem    Fall detection and combining fall detection, temperature and pulse measurements, and Wifi into one system
+Abdiasis Ibrahim   Temperature and pulse measurements 
+Bonan Kou          Wifi and website
+Jin Yan            Sending data to Excel 
 
-References
+References and source code
 
 fall detection: https://www.arduino.cc/en/Tutorial/ADXL3xx
 temperature and pulse measurements: https://medium.com/@chawlamahima76/heartbeat-and-body-temperature-monitoring-using-arduino-cf0a339b50f
@@ -84,6 +84,7 @@ unsigned long prevTime;
 unsigned long webTimer = 0;  // timer for sending data to website
 unsigned long excelTimer = 0;
 unsigned long fallTimer = 0;
+unsigned long fallDetectTimer = 0;
 
 // Wifi variables
 int i = 0, k = 0;
@@ -139,12 +140,15 @@ void loop() {
   currTime = millis();
 
   fallDetection();
-
+  // show fall detection for 10 seconds
+  if (currTime - fallDetectTimer > 10000) {
+    fall = 0;
+  }
   if (currTime - prevTime > 20) {
     getTempPulse();
   }
 
-  // update LCD about every 1 second
+  // update LCD every 1 second
   if (currTime - prevTime > 1000) {
     prevTime = currTime;
     tempC = (avgTemp * 500.0) / 1023.0 + TEMP_OFFSET;
@@ -184,16 +188,18 @@ void loop() {
     }
     webTimer = millis();
   }
-
+  
   // send data to Excel every 5 seconds
   if (millis() - excelTimer > 5000) {
     processIncomingExcel();
     sendDatatoExcel();
     excelTimer = millis();
   }
+  
+  
 }
 
-// sends data to Excel via serial
+// sends data to Excel via serial in the format: temperature (C), pulse (BPM), fall (boolean)
 // commas are delimiters between data
 void sendDatatoExcel() {
   Serial.print(tempC); 
@@ -294,9 +300,8 @@ void fallDetection() {
       }
       // if low acceleration is passed, a fall is detected
       if ((accel != 0) && (accel < FALL_LOW_THRESHOLD) && negX) {
-        lcd.setCursor(0, 0);
-        lcd.print("Fall detected");
-        delay(7000);
+        fall = 1;
+        fallDetectTimer = millis();
         break;
       }
     }
